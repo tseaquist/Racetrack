@@ -14,9 +14,9 @@ pub fn display_solution(game_board: &GameBoard, opt: &Optimization, vals: &Vec<f
             let out = out.unwrap();
             state = out.1;
             let action = out.0;
-            println!("Action {}: ({},{}) V:({},{})", i, action.dr, action.dc, state.vr, state.vc);
+            println!("Action {}: A({},{}) -> V({},{})", i, action.dr, action.dc, state.vr, state.vc);
             i += 1;
-            board_display[state.r as usize][state.c as usize] = format!("[{i}]");
+            board_display[state.r as usize][state.c as usize] = format!("[{}]", i.to_string().chars().last().unwrap());
         }
     }
     display_from_board(&board_display);
@@ -32,6 +32,8 @@ fn create_board(game_board: &GameBoard) -> Vec<Vec<String>> {
                 board_display[r as usize][c as usize] = "[X]".to_string();
             } else if game_board.is_goal(r, c) {
                 board_display[r as usize][c as usize] = "[!]".to_string();
+            } else if game_board.start_r == r && game_board.start_c == c {
+                board_display[r as usize][c as usize] = "[S]".to_string();
             }
         }
     }

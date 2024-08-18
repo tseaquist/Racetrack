@@ -1,4 +1,7 @@
 use crate::predicates::{GridPredicate, Mask, SingletonPredicate};
+use std::fs::File;
+use std::io::Error;
+use std::path::Path;
 
 pub struct GameBoard {
     pub grid: Grid,
@@ -57,6 +60,68 @@ impl GameBoard {
         let mask = Mask::from(grid, mask);
 
         GameBoard::new(grid, Box::new(mask), Box::new(goal), max_speed, 1, nc / 2 + 1)
+    }
+
+    pub fn read_csv_file(path: &Path, max_speed: i32) -> Result<Self, Error> {
+        let mut data = Vec::<Vec<String>>::new();
+        let file = File::open(path)?;
+        println!("Reading from file {:?}", path);
+        let mut rdr = csv::Reader::from_reader(file);
+        let mut size = Option::<usize>::None;
+        for result in rdr.records() {
+            let mut row = Vec::new();
+            let record = result?;
+            for element in record.iter() {
+                let e = String::from(element);
+                row.push(e);
+            }
+            if size.is_some() {
+                if size.unwrap() != row.len() {
+                    panic!("Row of different length found");
+                }
+            } else {
+                size = Some(row.len());
+            }
+            data.push(row);
+        }
+        Self::read_data(data.into_iter().rev().collect(), max_speed)
+    }
+
+    fn read_data(data: Vec<Vec<String>>, max_speed: i32) -> Result<Self, Error> {
+        let nr = data.len();
+        let nc = data[0].len();
+        let grid = Grid { nr: nr as i32, nc: nc as i32 };
+
+        let mut mask = vec![true; nr * nc];
+        let mut goal = vec![false; nr * nc];
+        let mut start = Option::<(i32, i32)>::None;
+
+        for r in 0..nr as i32 {
+            for c in 0..nc as i32 {
+                let val = data[r as usize][c as usize].trim().to_lowercase();
+                let val = val.as_str();
+                match val {
+                    "_" => {}
+                    "x" => mask[grid.to_index(r, c)] = false,
+                    "!" => goal[grid.to_index(r, c)] = true,
+                    "s" => if start.is_some() {
+                        panic!("Start location must be unique")
+                    } else {
+                        start = Some((r, c))
+                    },
+                    _ => panic!("Unrecognized character in data: {}", val.trim()),
+                }
+            }
+        }
+
+        if start.is_some() {
+            let start = start.unwrap();
+            let mask = Mask::from(grid, mask);
+            let goal = Mask::from(grid, goal);
+            Ok(GameBoard::new(grid, Box::new(mask), Box::new(goal), max_speed, start.0, start.1))
+        } else {
+            panic!("Start postion not specified");
+        }
     }
 }
 #[derive(Copy, Clone)]
