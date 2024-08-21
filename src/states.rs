@@ -42,6 +42,7 @@ impl StateSpace {
     }
 }
 
+#[derive(Debug)]
 pub struct CarState {
     pub r: i32,
     pub c: i32,

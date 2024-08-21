@@ -18,32 +18,28 @@ impl Optimization {
         }
     }
 
-    pub fn value_recursion(&self, values: Arc<Mutex<Vec<f64>>>) {
+    pub fn value_recursion(&self, values: &mut Vec<Mutex<f64>>) {
         let game_board = self.state_space.game_board.clone();
         self.state_space.states.par_iter()
             .filter(|s| game_board.is_valid(s.r, s.c))
             // TODO Parallelize over state
             .for_each(|state| {
                 if game_board.is_goal(state.r, state.c) {
-                    let mut values = values.lock().unwrap();
-                    values[state.index] = 0.0;
+                    *values[state.index].lock().unwrap() = 0.0;
                 } else if !game_board.is_valid(state.r, state.c) {
-                    let mut values = values.lock().unwrap();
-                    values[state.index] = f64::INFINITY;
+                    *values[state.index].lock().unwrap() = f64::INFINITY;
                 } else {
                     let mut min_val = f64::INFINITY;
                     for action in self.action_space.actions(state) {
                         let incr = self.action_value(&action, state);
-                        let mut values = values.lock().unwrap();
-                        let future = values[incr.1.index];
+                        let future = *values[incr.1.index].lock().unwrap();
                         let val = incr.0 + future;
                         if val < min_val
                         {
                             min_val = val;
                         }
                     }
-                    let mut values = values.lock().unwrap();
-                    values[state.index] = min_val;
+                    *values[state.index].lock().unwrap() = min_val;
                 }
             })
     }
