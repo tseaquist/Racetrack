@@ -1,9 +1,9 @@
 use crate::game_space::GameBoard;
 use crate::states::CarState;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct ActionSpace {
-    game_board: Rc<GameBoard>,
+    game_board: Arc<GameBoard>,
 }
 
 pub struct Action {
@@ -18,7 +18,7 @@ impl Action {
 }
 
 impl ActionSpace {
-    pub fn from(game_board: Rc<GameBoard>) -> ActionSpace {
+    pub fn from(game_board: Arc<GameBoard>) -> ActionSpace {
         ActionSpace { game_board }
     }
 

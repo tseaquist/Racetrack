@@ -1,8 +1,9 @@
 use crate::actions::{Action, ActionSpace};
 use crate::game_space::{dist, GameBoard};
 use crate::states::{CarState, StateSpace};
+use rayon::prelude::*;
 use std::ops::Deref;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 pub struct Optimization {
     pub state_space: StateSpace,
@@ -10,27 +11,30 @@ pub struct Optimization {
 }
 
 impl Optimization {
-    pub fn from(game_board: Rc<GameBoard>) -> Optimization {
+    pub fn from(game_board: Arc<GameBoard>) -> Optimization {
         Optimization {
             state_space: StateSpace::from(game_board.clone()),
             action_space: ActionSpace::from(game_board.clone()),
         }
     }
 
-    pub fn value_recursion(&self, values: &mut Vec<f64>) {
-        let game_board = &self.state_space.game_board;
-        self.state_space.states.iter()
+    pub fn value_recursion(&self, values: Arc<Mutex<Vec<f64>>>) {
+        let game_board = self.state_space.game_board.clone();
+        self.state_space.states.par_iter()
             .filter(|s| game_board.is_valid(s.r, s.c))
             // TODO Parallelize over state
             .for_each(|state| {
                 if game_board.is_goal(state.r, state.c) {
+                    let mut values = values.lock().unwrap();
                     values[state.index] = 0.0;
                 } else if !game_board.is_valid(state.r, state.c) {
+                    let mut values = values.lock().unwrap();
                     values[state.index] = f64::INFINITY;
                 } else {
                     let mut min_val = f64::INFINITY;
                     for action in self.action_space.actions(state) {
                         let incr = self.action_value(&action, state);
+                        let mut values = values.lock().unwrap();
                         let future = values[incr.1.index];
                         let val = incr.0 + future;
                         if val < min_val
@@ -38,6 +42,7 @@ impl Optimization {
                             min_val = val;
                         }
                     }
+                    let mut values = values.lock().unwrap();
                     values[state.index] = min_val;
                 }
             })

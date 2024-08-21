@@ -1,13 +1,13 @@
 use crate::game_space::GameBoard;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct StateSpace {
-    pub game_board: Rc<GameBoard>,
+    pub game_board: Arc<GameBoard>,
     pub states: Vec<CarState>,
 }
 
 impl StateSpace {
-    pub fn from(game_board: Rc<GameBoard>) -> StateSpace {
+    pub fn from(game_board: Arc<GameBoard>) -> StateSpace {
         let mut states = Vec::new();
         for r in 0..game_board.grid.nr {
             for c in 0..game_board.grid.nc {

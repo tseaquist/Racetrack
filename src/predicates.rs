@@ -1,8 +1,9 @@
 use crate::game_space::Grid;
 
-pub trait GridPredicate {
+pub trait GridPredicate: Send + Sync {
     fn test(&self, r: i32, c: i32) -> bool;
 }
+
 
 pub struct SingletonPredicate {
     r: i32,
