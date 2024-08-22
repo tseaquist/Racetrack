@@ -53,30 +53,66 @@ impl Optimization {
         let nvc = action.dc as i32 + state.vc;
         let nr = state.r + nvr;
         let nc = state.c + nvc;
-        let divs = nvr.abs() + nvc.abs();
-        if divs == 0 {
-            return (1.0, self.state_space.get_state(nr, nc, nvr, nvc));
-        }
-        let mut x = state.c as f64;
-        let mut y = state.r as f64;
-        let dx = nvc as f64 / divs as f64;
-        let dy = nvr as f64 / divs as f64;
-        //TODO The code below for finding intermediate points can probably be dramatically improved
-        for _ in 0..divs {
-            x += dx;
-            y += dy;
-            let cr = x.round() as i32;
-            let rr = y.round() as i32;
-            if !game_board.is_valid(rr, cr) {
+        for cell in Self::intersecting_cells(state, action) {
+            let r = cell.0;
+            let c = cell.1;
+            if !game_board.is_valid(r, c) {
                 return (f64::INFINITY, state);
             }
-            if game_board.is_goal(rr, cr) {
-                let part = dist(state.r, state.c, rr, cr);
-                let full = dist(state.r, state.c, nr, nc);
-                return (part / full, self.state_space.get_state(rr, cr, nvr, nvc));
+            if game_board.is_goal(r, c) {
+                let part = dist(state.r, state.c, r, c);
+                let full = dist(state.r, state.c, r, c);
+                return (part / full, self.state_space.get_state(r, c, 0, 0));
             }
         }
         (1.0, self.state_space.get_state(nr, nc, nvr, nvc))
+    }
+
+    fn intersecting_cells(state: &CarState, action: &Action) -> Vec<(i32, i32)> {
+        let dr = action.dr as i32 + state.vr;
+        let dc = action.dc as i32 + state.vc;
+        Self::intersecting_cells_raw(state.r, state.c, dr, dc)
+    }
+    pub fn intersecting_cells_raw(r_start: i32, c_start: i32, dr: i32, dc: i32) -> Vec<(i32, i32)> {
+        let mut cells = Vec::<(i32, i32)>::with_capacity(2 * (dr.abs() + dc.abs()) as usize);
+        //Parameterized vector with t
+        //r = r_0 + t * dr
+        //c = c_0 + t * dc
+        let step_c = if dc > 0 { 1 } else if dc < 0 { -1 } else { 0 };
+        let step_r = if dr > 0 { 1 } else if dr < 0 { -1 } else { 0 };
+        let t_delta_c = if step_c != 0 { step_c as f64 / dc as f64 } else { f64::INFINITY };
+        let t_delta_r = if step_r != 0 { step_r as f64 / dr as f64 } else { f64::INFINITY };
+
+        let mut t_max_c = 0.5 * t_delta_c;
+        let mut t_max_r = 0.5 * t_delta_r;
+
+        let mut c = c_start;
+        let mut r = r_start;
+
+        let c_final = c + dc;
+        let r_final = r + dr;
+
+        let epsilon = 1E-8;
+        while c != c_final || r != r_final {
+            if t_max_c < t_max_r - epsilon {
+                t_max_c += t_delta_c;
+                c += step_c;
+                cells.push((r, c));
+            } else if t_max_c - epsilon > t_max_r {
+                t_max_r += t_delta_r;
+                r += step_r;
+                cells.push((r, c));
+            } else { // - epsilon <= t_max_c - t_max_r && t_max_c - t_max_r <= epsilon
+                t_max_c += t_delta_c;
+                c += step_c;
+                cells.push((r, c));
+                t_max_r += t_delta_r;
+                r += step_r;
+                cells.push((r, c - step_c));
+                cells.push((r, c));
+            }
+        }
+        cells
     }
 
     pub fn walk<'a>(&'a self, values: &Vec<f64>, state: &'a CarState) -> Option<(Action, &'a CarState)> {
