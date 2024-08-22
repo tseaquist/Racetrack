@@ -45,7 +45,7 @@ fn args_to_board(args: Vec<String>) -> Result<GameBoard, Error> {
 
     if args.contains_key("circle") && args.get("circle").unwrap().parse::<bool>().unwrap_or(false)
     {
-        return Ok(GameBoard::generate_circ_track(3, 3, max_speed));
+        return Ok(GameBoard::generate_circ_track(40, 40, max_speed));
     }
 
     let default_path = "./resources/large.csv".to_string();

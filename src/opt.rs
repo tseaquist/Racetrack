@@ -53,28 +53,11 @@ impl Optimization {
         let nvc = action.dc as i32 + state.vc;
         let nr = state.r + nvr;
         let nc = state.c + nvc;
-        for cell in Self::intersecting_cells(state, action) {
-            let r = cell.0;
-            let c = cell.1;
-            if !game_board.is_valid(r, c) {
-                return (f64::INFINITY, state);
-            }
-            if game_board.is_goal(r, c) {
-                let part = dist(state.r, state.c, r, c);
-                let full = dist(state.r, state.c, r, c);
-                return (part / full, self.state_space.get_state(r, c, 0, 0));
-            }
-        }
-        (1.0, self.state_space.get_state(nr, nc, nvr, nvc))
+        let outcome = self.intersecting_cells(state, nvr, nvc);
+        outcome.unwrap_or((1.0, self.state_space.get_state(nr, nc, nvr, nvc)))
     }
 
-    fn intersecting_cells(state: &CarState, action: &Action) -> Vec<(i32, i32)> {
-        let dr = action.dr as i32 + state.vr;
-        let dc = action.dc as i32 + state.vc;
-        Self::intersecting_cells_raw(state.r, state.c, dr, dc)
-    }
-    pub fn intersecting_cells_raw(r_start: i32, c_start: i32, dr: i32, dc: i32) -> Vec<(i32, i32)> {
-        let mut cells = Vec::<(i32, i32)>::with_capacity(2 * (dr.abs() + dc.abs()) as usize);
+    fn intersecting_cells<'a>(&'a self, state: &'a CarState, dr: i32, dc: i32) -> Option<(f64, &'a CarState)> {
         //Parameterized vector with t
         //r = r_0 + t * dr
         //c = c_0 + t * dc
@@ -86,8 +69,8 @@ impl Optimization {
         let mut t_max_c = 0.5 * t_delta_c;
         let mut t_max_r = 0.5 * t_delta_r;
 
-        let mut c = c_start;
-        let mut r = r_start;
+        let mut c = state.c;
+        let mut r = state.r;
 
         let c_final = c + dc;
         let r_final = r + dr;
@@ -97,22 +80,50 @@ impl Optimization {
             if t_max_c < t_max_r - epsilon {
                 t_max_c += t_delta_c;
                 c += step_c;
-                cells.push((r, c));
+                let outcome = self.test_and_return_cell(r, c, state);
+                if outcome.is_some() {
+                    return outcome;
+                }
             } else if t_max_c - epsilon > t_max_r {
                 t_max_r += t_delta_r;
                 r += step_r;
-                cells.push((r, c));
+                let outcome = self.test_and_return_cell(r, c, state);
+                if outcome.is_some() {
+                    return outcome;
+                }
             } else { // - epsilon <= t_max_c - t_max_r && t_max_c - t_max_r <= epsilon
                 t_max_c += t_delta_c;
                 c += step_c;
-                cells.push((r, c));
+                let outcome = self.test_and_return_cell(r, c, state);
+                if outcome.is_some() {
+                    return outcome;
+                }
                 t_max_r += t_delta_r;
                 r += step_r;
-                cells.push((r, c - step_c));
-                cells.push((r, c));
+                let outcome = self.test_and_return_cell(r, c - step_c, state);
+                if outcome.is_some() {
+                    return outcome;
+                }
+                let outcome = self.test_and_return_cell(r, c, state);
+                if outcome.is_some() {
+                    return outcome;
+                }
             }
         }
-        cells
+        None
+    }
+
+    fn test_and_return_cell<'a>(&'a self, r: i32, c: i32, state: &'a CarState) -> Option<(f64, &'a CarState)> {
+        let game_board = self.state_space.game_board.deref();
+        if !game_board.is_valid(r, c) {
+            return Some((f64::INFINITY, state));
+        }
+        if game_board.is_goal(r, c) {
+            let part = dist(state.r, state.c, r, c);
+            let full = dist(state.r, state.c, r, c);
+            return Some((part / full, self.state_space.get_state(r, c, 0, 0)));
+        }
+        None
     }
 
     pub fn walk<'a>(&'a self, values: &Vec<f64>, state: &'a CarState) -> Option<(Action, &'a CarState)> {
