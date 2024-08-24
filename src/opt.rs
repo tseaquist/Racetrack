@@ -94,16 +94,16 @@ impl Optimization {
             } else { // - epsilon <= t_max_c - t_max_r && t_max_c - t_max_r <= epsilon
                 t_max_c += t_delta_c;
                 c += step_c;
-                let outcome = self.test_and_return_cell(r, c, state);
-                if outcome.is_some() {
-                    return outcome;
-                }
+                // let outcome = self.test_and_return_cell(r, c, state);
+                // if outcome.is_some() {
+                //     return outcome;
+                // }
                 t_max_r += t_delta_r;
                 r += step_r;
-                let outcome = self.test_and_return_cell(r, c - step_c, state);
-                if outcome.is_some() {
-                    return outcome;
-                }
+                // let outcome = self.test_and_return_cell(r, c - step_c, state);
+                // if outcome.is_some() {
+                //     return outcome;
+                // }
                 let outcome = self.test_and_return_cell(r, c, state);
                 if outcome.is_some() {
                     return outcome;
@@ -124,6 +124,26 @@ impl Optimization {
             return Some((part / full, self.state_space.get_state(r, c, 0, 0)));
         }
         None
+    }
+
+    pub fn generate_path<'a>(&'a self, vals: &Vec<f64>, start: &'a CarState) -> Vec<(&'a CarState, Option<Action>)> {
+        let mut solution = Vec::new();
+        let game_board = self.state_space.game_board.deref();
+        let mut state = start;
+        while !game_board.is_goal(state.r, state.c) {
+            let out = self.walk(vals, &state);
+            if out.is_some() {
+                let out = out.unwrap();
+                let action = out.0;
+                solution.push((state, Some(action)));
+                state = out.1;
+            } else {
+                eprintln!("Failed to find solution reaching goal. Partial path has been generated.");
+                break;
+            }
+        }
+        solution.push((state, None));
+        solution
     }
 
     pub fn walk<'a>(&'a self, values: &Vec<f64>, state: &'a CarState) -> Option<(Action, &'a CarState)> {

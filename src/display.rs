@@ -1,23 +1,20 @@
+use crate::actions::Action;
 use crate::game_space::GameBoard;
-use crate::opt::Optimization;
 use crate::states::{CarState, StateSpace};
 
-pub fn display_solution(game_board: &GameBoard, opt: &Optimization, vals: &Vec<f64>, start: &CarState) {
+pub fn display_solution(game_board: &GameBoard, path: &Vec<(&CarState, Option<Action>)>) {
     let mut board_display = create_board(game_board);
-
-    let mut state = start;
-    let mut i = 0;
-    board_display[state.r as usize][state.c as usize] = format!("[{i}]");
-    while !game_board.is_goal(state.r, state.c) {
-        let out = opt.walk(vals, &state);
-        if out.is_some() {
-            let out = out.unwrap();
-            state = out.1;
-            let action = out.0;
-            println!("Action {}: A({},{}) -> V({},{})", i, action.dr, action.dc, state.vr, state.vc);
-            i += 1;
-            board_display[state.r as usize][state.c as usize] = format!("[{}]", i.to_string().chars().last().unwrap());
+    for i in 0..path.len() {
+        let out = path.get(i);
+        let out = out.unwrap();
+        let state = out.0;
+        let action_opt = &out.1;
+        if let Some(action) = action_opt {
+            println!("Action {}: S({},{},{},{}) + A({},{})", i, state.r, state.c, state.vr, state.vc, action.dr, action.dc);
+        } else {
+            println!("Goal Reached: P({},{}))", state.r, state.c);
         }
+        board_display[state.r as usize][state.c as usize] = format!("[{}]", i.to_string().chars().last().unwrap());
     }
     display_from_board(&board_display);
 }

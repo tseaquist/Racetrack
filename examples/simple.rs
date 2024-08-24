@@ -34,7 +34,8 @@ fn main() -> Result<(), Error> {
     println!("Time to compute: {}", now.elapsed().as_secs_f64());
 
     let vals: Vec<f64> = vals.iter().map(|v| *v.lock().unwrap()).collect();
-    display_solution(&game_board, &opt, &vals, start);
+    let path = opt.generate_path(&vals, start);
+    display_solution(&game_board, &path);
     Ok(())
 }
 
