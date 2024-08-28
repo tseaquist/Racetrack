@@ -44,9 +44,12 @@ fn args_to_board(args: Vec<String>) -> Result<GameBoard, Error> {
     let max_speed = args.get("max_speed");
     let max_speed = if max_speed.is_some() { max_speed.unwrap().parse::<i32>().unwrap_or(6) } else { 6 };
 
-    if args.contains_key("circle") && args.get("circle").unwrap().parse::<bool>().unwrap_or(false)
+    if args.contains_key("circle")
     {
-        return Ok(GameBoard::generate_circ_track(40, 40, max_speed));
+        let dims = args.get("circle").unwrap().split(",").collect::<Vec<&str>>();
+        let nr = dims[0].parse::<i32>().unwrap_or(40);
+        let nc = dims[1].parse::<i32>().unwrap_or(40);
+        return Ok(GameBoard::generate_circ_track(nr, nc, max_speed));
     }
 
     let default_path = "./resources/large.csv".to_string();
